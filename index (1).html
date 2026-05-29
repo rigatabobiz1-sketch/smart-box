@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a1628">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pilulier">
+<title>Pilulier Intelligent</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0a1628;
+  --bg2:     #0f1e35;
+  --bg3:     #162840;
+  --bg4:     #1c3250;
+  --accent:  #00e5a0;
+  --acc2:    #00b07a;
+  --danger:  #ff4d6d;
+  --warn:    #ffb703;
+  --info:    #4fc3f7;
+  --text:    #e2f0ec;
+  --muted:   #6b8fa8;
+  --border:  rgba(0,229,160,0.12);
+  --mono:    'Space Mono', monospace;
+  --sans:    'DM Sans', sans-serif;
+  --red-glow: rgba(255,77,109,0.35);
+  --green-glow: rgba(0,229,160,0.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--sans);color:var(--text);}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:430px;margin:0 auto;}
+
+/* STATUSBAR */
+.sb{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 2px;font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;}
+.sb-icons{display:flex;gap:6px;align-items:center;}
+.wifi-led{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);}
+
+/* HEADER */
+.hdr{background:var(--bg2);padding:10px 18px 12px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.hdr-row{display:flex;justify-content:space-between;align-items:center;}
+.hdr h1{font-size:16px;font-weight:600;letter-spacing:-0.3px;}
+.hdr p{font-size:11px;color:var(--muted);margin-top:1px;}
+.conn{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--accent);background:rgba(0,229,160,0.07);border:1px solid rgba(0,229,160,0.2);border-radius:20px;padding:3px 10px;}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,229,160,0.5);}50%{box-shadow:0 0 0 5px rgba(0,229,160,0);}}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:14px;background:var(--bg);-webkit-overflow-scrolling:touch;}
+.screen{display:none;flex-direction:column;gap:12px;animation:fi 0.2s ease;}
+.screen.active{display:flex;}
+@keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:14px 16px;}
+.clabel{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;display:flex;align-items:center;gap:5px;}
+.clabel::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--accent);}
+
+/* CLOCK */
+.clock{font-family:var(--mono);font-size:50px;font-weight:700;color:var(--accent);letter-spacing:-2px;line-height:1;text-shadow:0 0 40px rgba(0,229,160,0.25);}
+.csec{font-size:26px;color:var(--acc2);}
+.dline{font-size:12px;color:var(--muted);margin-top:5px;font-family:var(--mono);}
+
+/* ESP32 PROTOTYPE PANEL */
+.esp-panel{background:var(--bg3);border:1px solid rgba(0,229,160,0.1);border-radius:14px;padding:14px;}
+.esp-title{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.esp-board{background:#1a2f1a;border:1.5px solid #2a4a2a;border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;overflow:hidden;}
+.esp-board::before{content:'ESP32';position:absolute;top:6px;right:10px;font-family:var(--mono);font-size:9px;color:#3a6a3a;letter-spacing:0.05em;}
+.component{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.comp-label{font-size:9px;font-family:var(--mono);color:#4a7a4a;text-transform:uppercase;letter-spacing:0.05em;}
+
+/* LED */
+.led{width:20px;height:20px;border-radius:50%;background:#1a1a1a;border:2px solid #333;transition:all 0.15s;position:relative;}
+.led.on{background:#ff4400;border-color:#ff6600;box-shadow:0 0 8px #ff4400, 0 0 20px rgba(255,68,0,0.6), 0 0 40px rgba(255,68,0,0.3);}
+.led.blink{animation:ledBlink 0.3s infinite;}
+@keyframes ledBlink{0%,100%{background:#ff4400;box-shadow:0 0 8px #ff4400,0 0 20px rgba(255,68,0,0.6);}50%{background:#1a1a1a;box-shadow:none;}}
+
+/* BUZZER */
+.buzzer-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.buzzer{width:28px;height:28px;border-radius:50%;background:#222;border:2px solid #444;display:flex;align-items:center;justify-content:center;position:relative;}
+.buzzer-inner{width:14px;height:14px;border-radius:50%;background:#333;border:1px solid #555;transition:all 0.15s;}
+.buzzer.on .buzzer-inner{background:#888;border-color:#aaa;box-shadow:0 0 6px rgba(255,255,255,0.3);}
+.buzz-waves{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.buzz-wave{position:absolute;border:1.5px solid rgba(255,200,0,0.6);border-radius:50%;width:28px;height:28px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;}
+.buzzer.on .buzz-wave:nth-child(1){animation:buzzRing 0.6s 0s infinite;}
+.buzzer.on .buzz-wave:nth-child(2){animation:buzzRing 0.6s 0.2s infinite;}
+.buzzer.on .buzz-wave:nth-child(3){animation:buzzRing 0.6s 0.4s infinite;}
+@keyframes buzzRing{0%{width:28px;height:28px;opacity:0.8;}100%{width:60px;height:60px;opacity:0;}}
+
+/* SENSOR */
+.sensor-row{display:flex;align-items:center;gap:12px;}
+.sensor-c{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:all 0.3s;cursor:pointer;}
+.sensor-c.present{background:rgba(0,229,160,0.1);border:1.5px solid rgba(0,229,160,0.35);box-shadow:0 0 16px rgba(0,229,160,0.12);}
+.sensor-c.absent{background:rgba(255,77,109,0.1);border:1.5px solid rgba(255,77,109,0.35);box-shadow:0 0 16px rgba(255,77,109,0.12);}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;font-family:var(--mono);}
+.tag.ok{background:rgba(0,229,160,0.1);color:var(--accent);border:1px solid rgba(0,229,160,0.25);}
+.tag.miss{background:rgba(255,77,109,0.1);color:var(--danger);border:1px solid rgba(255,77,109,0.25);}
+
+/* ALARM BANNER */
+.abanner{background:rgba(255,77,109,0.08);border:1.5px solid rgba(255,77,109,0.5);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;animation:abPulse 0.8s infinite;}
+.abanner.hidden{display:none;animation:none;}
+@keyframes abPulse{0%,100%{border-color:rgba(255,77,109,0.4);}50%{border-color:rgba(255,77,109,1);box-shadow:0 0 25px rgba(255,77,109,0.25);}}
+.abanner .aicon{font-size:26px;flex-shrink:0;}
+.abanner strong{font-size:14px;color:var(--danger);display:block;}
+.abanner p{font-size:12px;color:var(--muted);}
+.abtn{margin-left:auto;background:var(--danger);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:var(--sans);}
+
+/* ALARM LIST */
+.alarm-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg3);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;transition:all 0.2s;}
+.alarm-item.firing{border-color:rgba(255,77,109,0.6);background:rgba(255,77,109,0.06);animation:abPulse 0.8s infinite;}
+.alarm-item.off{opacity:0.45;}
+.atbig{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--text);}
+.asub{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle{width:44px;height:26px;border-radius:13px;border:none;cursor:pointer;position:relative;transition:background 0.3s;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle.off{background:#222;border:1px solid #444;}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;transition:left 0.3s;}
+.toggle.on::after{left:21px;}
+.toggle.off::after{left:3px;}
+.del-btn{background:none;border:none;color:var(--danger);font-size:18px;cursor:pointer;padding:4px 8px;opacity:0.6;}
+.del-btn:hover{opacity:1;}
+
+/* ADD ALARM MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.modal-bg.hidden{display:none;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:430px;animation:slideUp 0.3s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal h2{font-size:17px;font-weight:600;margin-bottom:20px;text-align:center;}
+.time-picker{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;}
+.tp-col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.tp-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:20px;width:44px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.tp-btn:active{background:var(--bg4);}
+.tp-val{font-family:var(--mono);font-size:42px;font-weight:700;color:var(--accent);min-width:60px;text-align:center;line-height:1;}
+.tp-sep{font-family:var(--mono);font-size:36px;font-weight:700;color:var(--muted);margin-bottom:8px;}
+.tp-label{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.modal-btns{display:flex;gap:10px;}
+.mbtn{flex:1;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--sans);}
+.mbtn.cancel{background:var(--bg3);border:1px solid var(--border);color:var(--muted);}
+.mbtn.confirm{background:var(--accent);border:none;color:#0a1628;}
+
+/* ADD BTN */
+.add-btn{width:100%;padding:12px;background:none;border:1px dashed rgba(0,229,160,0.25);border-radius:12px;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--sans);transition:all 0.2s;}
+.add-btn:hover,.add-btn:active{border-color:var(--accent);color:var(--accent);}
+
+/* CODE BLOCK */
+.code-b{background:#050e1a;border:1px solid rgba(0,229,160,0.08);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:11px;color:#7ee8c8;line-height:1.8;overflow-x:auto;}
+.kw{color:#ff79c6;}.num{color:var(--warn);}.cm{color:#3a5a6a;}
+
+/* HISTORY */
+.hi{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.hi:last-child{border-bottom:none;}
+.hd{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.hd.ok{background:var(--accent);}
+.hd.miss{background:var(--danger);}
+.hd.pending{background:var(--warn);}
+.ht{font-family:var(--mono);font-size:12px;color:var(--acc2);min-width:38px;}
+.htx{font-size:13px;color:var(--text);flex:1;}
+.htg{font-size:10px;color:var(--muted);}
+
+/* STATS */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.metric{background:var(--bg3);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border);}
+.mval{font-family:var(--mono);font-size:26px;font-weight:700;}
+.mval.g{color:var(--accent);}.mval.r{color:var(--danger);}.mval.y{color:var(--warn);}
+.mlbl{font-size:11px;color:var(--muted);margin-top:3px;}
+.wbars{display:flex;gap:6px;align-items:flex-end;height:75px;padding:4px 0;}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bbar{width:100%;border-radius:4px 4px 0 0;}
+.bbar.ok{background:var(--accent);}.bbar.miss{background:var(--danger);}.bbar.pending{background:var(--warn);}
+.blbl{font-size:10px;color:var(--muted);font-family:var(--mono);}
+
+/* SETTINGS */
+.sr{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.sr:last-child{border-bottom:none;}
+.sl{font-size:14px;}.ss{font-size:11px;color:var(--muted);margin-top:2px;}
+.sv{font-family:var(--mono);font-size:12px;color:var(--accent);}
+.hbtn{width:100%;padding:12px;background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.15);border-radius:12px;color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:var(--sans);margin-bottom:8px;text-align:left;}
+
+/* NEXT ALARM */
+.next-big{font-family:var(--mono);font-size:36px;color:var(--warn);font-weight:700;}
+.next-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+/* BOTTOM NAV */
+.nav{display:flex;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom);}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 7px;background:none;border:none;color:var(--muted);font-size:10px;font-family:var(--sans);cursor:pointer;transition:color 0.2s;position:relative;}
+.nb.active{color:var(--accent);}
+.nb svg{width:22px;height:22px;}
+.nbadge{position:absolute;top:8px;right:calc(50% - 18px);width:7px;height:7px;background:var(--danger);border-radius:50%;border:1.5px solid var(--bg2);display:none;}
+.nbadge.show{display:block;}
+
+/* TOAST */
+.toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-16px);background:var(--bg3);border:1px solid var(--accent);color:var(--accent);font-size:13px;padding:9px 18px;border-radius:30px;opacity:0;pointer-events:none;transition:all 0.3s;z-index:200;white-space:nowrap;font-family:var(--mono);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="sb">
+    <span id="sbTime" style="font-family:var(--mono)">--:--</span>
+    <div class="sb-icons">
+      <div class="wifi-led" id="wifiLed"></div>
+      <span>WiFi</span><span>🔋</span>
+    </div>
+  </div>
+
+  <div class="hdr">
+    <div class="hdr-row">
+      <div><h1>💊 Pilulier Intelligent</h1><p>ESP32 · Home · UTC+1 · Maroc</p></div>
+      <div class="conn"><div class="pulse"></div><span id="connTxt">Connecté</span></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="screen active" id="screen-home">
+
+      <div class="abanner hidden" id="alertBanner">
+        <span class="aicon">🔔</span>
+        <div><strong>!! ALARME !!</strong><p id="alarmMsg">Prenez votre médicament</p></div>
+        <button class="abtn" onclick="dismissAlarm()">✓ Pris</button>
+      </div>
+
+      <div class="card">
+        <div class="clabel">Heure actuelle</div>
+        <div class="clock"><span id="cH">--</span>:<span id="cM">--</span><span class="csec">:<span id="cS">--</span></span></div>
+        <div class="dline" id="dLine">Chargement...</div>
+      </div>
+
+      <!-- ESP32 PROTOTYPE PANEL -->
+      <div class="esp-panel">
+        <div class="esp-title">🔌 Prototype ESP32 — État en temps réel</div>
+        <div class="esp-board">
+          <div class="component">
+            <div class="led" id="espLed"></div>
+            <div class="comp-label">LED<br>PIN 13</div>
+          </div>
+          <div class="component">
+            <div class="buzzer-wrap">
+              <div class="buzzer" id="espBuzzer">
+                <div class="buzzer-inner"></div>
+                <div class="buzz-waves">
+                  <div class="buzz-wave"></div>
+                  <div class="buzz-wave"></div>
+                  <div class="buzz-wave"></div>
+                </div>
+              </div>
+            </div>
+            <div class="comp-label">BUZZER<br>PIN 2</div>
+          </div>
+          <div class="component">
+            <div class="sensor-c present" id="sensorCircle" onclick="toggleSensor()" title="Cliquez pour simuler">
+              <span id="sensorEmoji">💊</span>
+            </div>
+            <div class="comp-label">CAPTEUR<br>PIN 16</div>
+          </div>
+          <div class="component" style="align-items:flex-start;">
+            <div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:4px;padding:4px 6px;min-width:90px;">
+              <div style="font-family:var(--mono);font-size:9px;color:#00ff41;line-height:1.6;" id="lcdDisplay">
+                Ven 29/05 02:42<br>
+                pilule 1: 1&nbsp;&nbsp;&nbsp;
+              </div>
+            </div>
+            <div class="comp-label">LCD I2C<br>0x27</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <div style="flex:1;background:var(--bg4);border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;font-family:var(--mono);color:var(--muted);">BUZZER</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;" id="buzzerStatus" class="r" style="color:var(--muted);">OFF</div>
+          </div>
+          <div style="flex:1;background:var(--bg4);border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;font-family:var(--mono);color:var(--muted);">LED</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;" id="ledStatus" style="color:var(--muted);">OFF</div>
+          </div>
+          <div style="flex:1;background:var(--bg4);border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;font-family:var(--mono);color:var(--muted);">ALARME</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;" id="alarmStatus" style="color:var(--muted);">--</div>
+          </div>
+          <div style="flex:1;background:var(--bg4);border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;font-family:var(--mono);color:var(--muted);">CAPTEUR</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;" id="capteurStatus" style="color:var(--accent);">HIGH</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="clabel">Historique — Aujourd'hui</div>
+        <div id="histList">
+          <div class="hi"><div class="hd pending"></div><span class="ht" id="nextAlarmTime">--:--</span><span class="htx">Prochaine alarme</span><span class="htg" id="nextAlarmIn" style="color:var(--warn);">calcul...</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALARMES -->
+    <div class="screen" id="screen-alarms">
+      <div class="card">
+        <div class="clabel">Programmer les alarmes</div>
+        <div id="alarmList"></div>
+        <button class="add-btn" onclick="openModal()">＋ &nbsp;Nouvelle alarme</button>
+      </div>
+      <div class="card">
+        <div class="clabel">Code C++ pour ESP32</div>
+        <div class="code-b" id="codeBlock"></div>
+        <button class="add-btn" style="margin-top:10px;" onclick="copyCode()">📋 &nbsp;Copier le code</button>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="screen" id="screen-stats">
+      <div class="card">
+        <div class="clabel">Cette semaine</div>
+        <div class="metrics">
+          <div class="metric"><div class="mval g">12</div><div class="mlbl">Prises confirmées</div></div>
+          <div class="metric"><div class="mval r">2</div><div class="mlbl">Prises manquées</div></div>
+          <div class="metric"><div class="mval y">86%</div><div class="mlbl">Taux de prise</div></div>
+          <div class="metric"><div class="mval">14</div><div class="mlbl">Alarmes totales</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="clabel">7 derniers jours</div>
+        <div class="wbars" id="weekBars"></div>
+      </div>
+      <div class="card">
+        <div class="clabel">Prochaine alarme</div>
+        <div class="next-big" id="nextBig">--:--</div>
+        <div class="next-sub" id="nextSub">Calcul...</div>
+      </div>
+    </div>
+
+    <!-- RÉGLAGES -->
+    <div class="screen" id="screen-settings">
+      <div class="card">
+        <div class="clabel">Connexion</div>
+        <div class="sr"><div><div class="sl">Réseau WiFi</div><div class="ss">SSID configuré</div></div><span class="sv">Home ✓</span></div>
+        <div class="sr"><div><div class="sl">Serveur NTP</div><div class="ss">Sync horloge</div></div><span class="sv">ma.pool.ntp.org</span></div>
+        <div class="sr"><div><div class="sl">Fuseau horaire</div><div class="ss">GMT Offset</div></div><span class="sv">UTC+1</span></div>
+      </div>
+      <div class="card">
+        <div class="clabel">Hardware ESP32</div>
+        <div class="sr"><div><div class="sl">Capteur pilule</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="sv">PIN 16</span><button class="toggle on" onclick="toggleEl(this,'buzzerToggle')"></button></div></div>
+        <div class="sr"><div><div class="sl">Buzzer</div><div class="ss">Clignotant 300ms</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="sv">PIN 2</span><button class="toggle on" id="buzzerToggle" onclick="toggleEl(this,'buzz')"></button></div></div>
+        <div class="sr"><div><div class="sl">LED indicateur</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="sv">PIN 13</span><button class="toggle on" id="ledToggle" onclick="toggleEl(this,'led')"></button></div></div>
+        <div class="sr"><div><div class="sl">LCD I2C</div><div class="ss">SDA=21, SCL=22</div></div><span class="sv">0x27</span></div>
+      </div>
+      <div class="card">
+        <div class="clabel">Son de l'alarme</div>
+        <div class="sr"><div><div class="sl">Volume</div></div>
+          <input type="range" min="0" max="1" step="0.1" value="0.7" id="volSlider" style="width:120px;" oninput="setVolume(this.value)">
+        </div>
+        <div class="sr"><div><div class="sl">Test sonnerie</div></div>
+          <button onclick="testSound()" style="background:var(--bg3);border:1px solid var(--border);color:var(--accent);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:var(--sans);">🔔 Tester</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <button class="nb active" onclick="switchTab('home',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+      Accueil<span class="nbadge" id="alertBadge"></span>
+    </button>
+    <button class="nb" onclick="switchTab('alarms',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Alarmes
+    </button>
+    <button class="nb" onclick="switchTab('stats',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+      Stats
+    </button>
+    <button class="nb" onclick="switchTab('settings',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Réglages
+    </button>
+  </nav>
+</div>
+
+<!-- ADD ALARM MODAL -->
+<div class="modal-bg hidden" id="modalBg">
+  <div class="modal">
+    <h2>Programmer une alarme</h2>
+    <div class="time-picker">
+      <div class="tp-col">
+        <button class="tp-btn" onclick="adjTime('h',1)">▲</button>
+        <div class="tp-val" id="tpH">08</div>
+        <button class="tp-btn" onclick="adjTime('h',-1)">▼</button>
+        <div class="tp-label">HEURE</div>
+      </div>
+      <div class="tp-sep">:</div>
+      <div class="tp-col">
+        <button class="tp-btn" onclick="adjTime('m',1)">▲</button>
+        <div class="tp-val" id="tpM">00</div>
+        <button class="tp-btn" onclick="adjTime('m',-1)">▼</button>
+        <div class="tp-label">MINUTE</div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn cancel" onclick="closeModal()">Annuler</button>
+      <button class="mbtn confirm" onclick="confirmAlarm()">✓ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+let alarms=JSON.parse(localStorage.getItem('alarms')||'[{"h":2,"m":46,"on":true},{"h":3,"m":0,"on":true}]');
+let pillPresent=true;
+let alarmFiring=false;
+let alarmInterval=null;
+let audioCtx=null;
+let blinkTimer=null;
+let tpH=8,tpM=0;
+let volume=0.7;
+let buzzerEnabled=true;
+let ledEnabled=true;
+
+function pad(n){return String(n).padStart(2,'0');}
+
+// AUDIO ENGINE — generates real beep sound
+function getAudio(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function beep(freq,dur,vol){
+  try{
+    const ctx=getAudio();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.frequency.value=freq;
+    osc.type='square';
+    gain.gain.setValueAtTime(vol*volume,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+dur);
+  }catch(e){}
+}
+
+function playAlarmSound(){
+  // Classic alarm pattern: two high beeps
+  beep(880,0.12,0.4);
+  setTimeout(()=>beep(880,0.12,0.4),180);
+  setTimeout(()=>beep(1100,0.18,0.5),380);
+}
+
+function testSound(){
+  playAlarmSound();
+  showToast('🔔 Test sonnerie !');
+}
+
+function setVolume(v){ volume=parseFloat(v); }
+
+// CLOCK
+function tick(){
+  const now=new Date();
+  const h=now.getHours(),m=now.getMinutes(),s=now.getSeconds();
+  document.getElementById('cH').textContent=pad(h);
+  document.getElementById('cM').textContent=pad(m);
+  document.getElementById('cS').textContent=pad(s);
+  document.getElementById('sbTime').textContent=pad(h)+':'+pad(m);
+  const wd=now.getDay(),d=now.getDate(),mo=now.getMonth();
+  document.getElementById('dLine').textContent=DAYS[wd]+' '+pad(d)+'/'+pad(mo+1)+'/'+now.getFullYear();
+
+  // LCD update
+  const lcd=document.getElementById('lcdDisplay');
+  if(lcd) lcd.innerHTML=DAYS[wd]+' '+pad(d)+'/'+pad(mo+1)+' '+pad(h)+':'+pad(m)+'<br>pilule 1: '+(pillPresent?'1':'0')+'&nbsp;&nbsp;&nbsp;';
+
+  // Check alarms at second 0
+  if(s===0){
+    alarms.forEach(a=>{
+      if(a.on&&a.h===h&&a.m===m) triggerAlarm(a);
+    });
+  }
+
+  updateNextAlarm(h,m,s);
+  updateAlarmItems(h,m);
+}
+
+function triggerAlarm(a){
+  if(alarmFiring) return;
+  alarmFiring=true;
+  document.getElementById('alertBanner').classList.remove('hidden');
+  document.getElementById('alertBadge').classList.add('show');
+  document.getElementById('alarmStatus').textContent='ON';
+  document.getElementById('alarmStatus').style.color='var(--danger)';
+
+  // Start visual ESP32 simulation
+  if(buzzerEnabled) startBuzzer();
+  if(ledEnabled) startLed();
+
+  // Sound loop
+  playAlarmSound();
+  alarmInterval=setInterval(()=>{
+    playAlarmSound();
+  },800);
+
+  // Push notification
+  if('Notification' in window && Notification.permission==='granted'){
+    new Notification('💊 Pilulier Intelligent',{body:'Prenez votre médicament maintenant !',icon:'icon-192.png'});
+  }
+
+  showToast('🔔 ALARME ! Prenez votre médicament');
+  addHistory(a.h,a.m,'firing');
+}
+
+function dismissAlarm(){
+  alarmFiring=false;
+  document.getElementById('alertBanner').classList.add('hidden');
+  document.getElementById('alertBadge').classList.remove('show');
+  document.getElementById('alarmStatus').textContent='OFF';
+  document.getElementById('alarmStatus').style.color='var(--muted)';
+  clearInterval(alarmInterval);
+  stopBuzzer();stopLed();
+  showToast('✓ Prise confirmée !');
+  addHistory(new Date().getHours(),new Date().getMinutes(),'ok');
+}
+
+function startBuzzer(){
+  const b=document.getElementById('espBuzzer');
+  const bs=document.getElementById('buzzerStatus');
+  b.classList.add('on');
+  bs.textContent='ON';bs.style.color='var(--warn)';
+}
+function stopBuzzer(){
+  const b=document.getElementById('espBuzzer');
+  const bs=document.getElementById('buzzerStatus');
+  b.classList.remove('on');
+  bs.textContent='OFF';bs.style.color='var(--muted)';
+}
+function startLed(){
+  const l=document.getElementById('espLed');
+  const ls=document.getElementById('ledStatus');
+  l.classList.remove('on');l.classList.add('blink');
+  ls.textContent='ON';ls.style.color='#ff6600';
+}
+function stopLed(){
+  const l=document.getElementById('espLed');
+  const ls=document.getElementById('ledStatus');
+  l.classList.remove('on','blink');
+  ls.textContent='OFF';ls.style.color='var(--muted)';
+}
+
+function toggleSensor(){
+  pillPresent=!pillPresent;
+  const c=document.getElementById('sensorCircle');
+  const cs=document.getElementById('capteurStatus');
+  const em=document.getElementById('sensorEmoji');
+  if(pillPresent){
+    c.className='sensor-c present';em.textContent='💊';
+    cs.textContent='HIGH';cs.style.color='var(--accent)';
+    if(alarmFiring) dismissAlarm();
+  } else {
+    c.className='sensor-c absent';em.textContent='⚠️';
+    cs.textContent='LOW';cs.style.color='var(--danger)';
+  }
+  showToast(pillPresent?'💊 Capteur: pilule détectée':'⚠️ Capteur: pilule absente');
+}
+
+function updateNextAlarm(h,m,s){
+  const now=h*60+m;
+  let next=null,minDiff=Infinity;
+  alarms.forEach(a=>{
+    if(!a.on)return;
+    let diff=(a.h*60+a.m)-now;
+    if(diff<=0)diff+=1440;
+    if(diff<minDiff){minDiff=diff;next=a;}
+  });
+  if(next){
+    const str=pad(next.h)+':'+pad(next.m);
+    document.getElementById('nextAlarmTime').textContent=str;
+    const hr=Math.floor(minDiff/60),mn=minDiff%60;
+    const txt=hr>0?`Dans ${hr}h ${mn}min`:`Dans ${mn} min`;
+    document.getElementById('nextAlarmIn').textContent=txt;
+    if(document.getElementById('nextBig')) document.getElementById('nextBig').textContent=str;
+    if(document.getElementById('nextSub')) document.getElementById('nextSub').textContent=txt;
+  }
+}
+
+function updateAlarmItems(h,m){
+  alarms.forEach((a,i)=>{
+    const el=document.getElementById('alarm-item-'+i);
+    if(el){
+      if(alarmFiring&&a.h===h&&a.m===m) el.classList.add('firing');
+      else el.classList.remove('firing');
+    }
+  });
+}
+
+// HISTORY
+function addHistory(h,m,type){
+  const list=document.getElementById('histList');
+  const item=document.createElement('div');
+  item.className='hi';
+  const labels={ok:'✓ Pris',miss:'✗ Raté',firing:'🔔 Alarme'};
+  const colors={ok:'var(--accent)',miss:'var(--danger)',firing:'var(--warn)'};
+  item.innerHTML=`<div class="hd ${type==='ok'?'ok':'miss'}"></div><span class="ht">${pad(h)}:${pad(m)}</span><span class="htx">${type==='firing'?'Alarme déclenchée':'Médicament'}</span><span class="htg" style="color:${colors[type]}">${labels[type]}</span>`;
+  list.appendChild(item);
+}
+
+// ALARM MANAGEMENT
+function renderAlarms(){
+  const list=document.getElementById('alarmList');
+  list.innerHTML='';
+  if(alarms.length===0){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Aucune alarme. Ajoutez-en une !</div>';
+  }
+  alarms.forEach((a,i)=>{
+    const div=document.createElement('div');
+    div.className='alarm-item'+(a.on?'':' off');
+    div.id='alarm-item-'+i;
+    div.innerHTML=`
+      <div>
+        <div class="atbig">${pad(a.h)}:${pad(a.m)}</div>
+        <div class="asub">Médicament · tous les jours</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="toggle ${a.on?'on':'off'}" onclick="toggleAlarm(${i})" aria-label="Activer/désactiver"></button>
+        <button class="del-btn" onclick="deleteAlarm(${i})" title="Supprimer">✕</button>
+      </div>`;
+    list.appendChild(div);
+  });
+  saveAlarms();
+  renderCode();
+}
+
+function toggleAlarm(i){
+  alarms[i].on=!alarms[i].on;
+  renderAlarms();
+  showToast(alarms[i].on?`✓ Alarme ${pad(alarms[i].h)}:${pad(alarms[i].m)} activée`:`Alarme désactivée`);
+}
+
+function deleteAlarm(i){
+  const a=alarms[i];
+  alarms.splice(i,1);
+  renderAlarms();
+  showToast(`🗑 Alarme ${pad(a.h)}:${pad(a.m)} supprimée`);
+}
+
+function saveAlarms(){ try{localStorage.setItem('alarms',JSON.stringify(alarms));}catch(e){} }
+
+// MODAL
+function openModal(){
+  tpH=8;tpM=0;
+  document.getElementById('tpH').textContent=pad(tpH);
+  document.getElementById('tpM').textContent=pad(tpM);
+  document.getElementById('modalBg').classList.remove('hidden');
+  // unlock audio on iOS
+  try{getAudio().resume();}catch(e){}
+}
+function closeModal(){ document.getElementById('modalBg').classList.add('hidden'); }
+function adjTime(type,dir){
+  if(type==='h'){tpH=(tpH+dir+24)%24;}
+  else{tpM=(tpM+dir+60)%60;}
+  document.getElementById('tpH').textContent=pad(tpH);
+  document.getElementById('tpM').textContent=pad(tpM);
+  beep(660,0.05,0.2);
+}
+function confirmAlarm(){
+  const exists=alarms.some(a=>a.h===tpH&&a.m===tpM);
+  if(exists){showToast('⚠️ Cette heure existe déjà');return;}
+  alarms.push({h:tpH,m:tpM,on:true});
+  alarms.sort((a,b)=>a.h*60+a.m-(b.h*60+b.m));
+  renderAlarms();
+  closeModal();
+  showToast(`✓ Alarme ${pad(tpH)}:${pad(tpM)} ajoutée`);
+}
+document.getElementById('modalBg').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// CODE GENERATOR
+function renderCode(){
+  const hs=alarms.map(a=>a.h).join(', ');
+  const ms=alarms.map(a=>a.m).join(', ');
+  const n=alarms.length;
+  document.getElementById('codeBlock').innerHTML=
+    `<span class="cm">// ========== ALARMES (${n}) ==========</span>\n`+
+    `<span class="kw">const int</span> ALARMES_HEURES[<span class="num">${n}</span>]  = {<span class="num">${hs}</span>};\n`+
+    `<span class="kw">const int</span> ALARMES_MINUTES[<span class="num">${n}</span>] = {<span class="num">${ms}</span>};\n`+
+    `<span class="kw">const int</span> NOMBRE_ALARMES = <span class="num">${n}</span>;\n`+
+    `<span class="cm">// Collez dans votre programme ESP32</span>`;
+}
+
+function copyCode(){
+  const hs=alarms.map(a=>a.h).join(', ');
+  const ms=alarms.map(a=>a.m).join(', ');
+  const n=alarms.length;
+  const code=`const int ALARMES_HEURES[${n}]  = {${hs}};\nconst int ALARMES_MINUTES[${n}] = {${ms}};\nconst int NOMBRE_ALARMES = ${n};`;
+  navigator.clipboard?.writeText(code).then(()=>showToast('✓ Code copié !')).catch(()=>showToast('Sélectionnez et copiez manuellement'));
+}
+
+// WEEK BARS
+function buildWeekBars(){
+  const data=[{s:'ok'},{s:'ok'},{s:'miss'},{s:'ok'},{s:'ok'},{s:'pending'},{s:'ok'}];
+  const labels=['L','M','M','J','V','S','D'];
+  const wrap=document.getElementById('weekBars');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  data.forEach((d,i)=>{
+    const h=d.s==='ok'?65:d.s==='pending'?35:20;
+    const col=document.createElement('div');
+    col.className='bcol';
+    col.innerHTML=`<div class="bbar ${d.s}" style="height:${h}px"></div><span class="blbl">${labels[i]}</span>`;
+    wrap.appendChild(col);
+  });
+}
+
+// NAV
+function switchTab(name,el){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  el.classList.add('active');
+  // unlock audio on first tab interaction (iOS)
+  try{getAudio().resume();}catch(e){}
+}
+
+function toggleEl(btn,type){
+  btn.classList.toggle('on');btn.classList.toggle('off');
+  const on=btn.classList.contains('on');
+  if(type==='buzz') buzzerEnabled=on;
+  if(type==='led') ledEnabled=on;
+  showToast(on?'✓ Activé':'Désactivé');
+}
+
+// TOAST
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// NOTIFICATIONS
+if('Notification' in window && Notification.permission==='default'){
+  Notification.requestPermission();
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// First touch unlocks AudioContext on iOS
+document.addEventListener('touchstart',()=>{try{getAudio().resume();}catch(e){}},{once:true});
+document.addEventListener('click',()=>{try{getAudio().resume();}catch(e){}},{once:true});
+
+// INIT
+tick();
+setInterval(tick,1000);
+renderAlarms();
+buildWeekBars();
+</script>
+</body>
+</html>
